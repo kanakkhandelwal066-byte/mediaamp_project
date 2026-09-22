@@ -1,0 +1,402 @@
+{
+  "info": {
+    "_postman_id": "cinebook-ai-collection-2026",
+    "name": "CineBook AI — Full-Stack API Suite",
+    "description": "Production-grade Postman collection for CineBook AI movie booking platform covering Auth, Catalog, Concurrency Seat Locking, Booking, Pricing Rules, Paytm/Simulator Payment, QR Boarding Passes, Hybrid ML Recommendations, and Admin Analytics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activeBookingId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Authentication",
+      "item": [
+        {
+          "name": "Register New Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Candidate Reviewer\",\n  \"email\": \"reviewer@cinebook.ai\",\n  \"password\": \"Reviewer@123\",\n  \"phone\": \"+919876543210\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Login Customer (Sets userToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data.access_token) {",
+                  "    pm.collectionVariables.set('userToken', jsonData.data.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@cinebook.ai\",\n  \"password\": \"User@123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login Admin (Sets adminToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data.access_token) {",
+                  "    pm.collectionVariables.set('adminToken', jsonData.data.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@cinebook.ai\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current Profile (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Catalog & Discovery",
+      "item": [
+        {
+          "name": "List Operating Cities",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/theatres/cities", "host": ["{{baseUrl}}"], "path": ["theatres", "cities"] }
+          }
+        },
+        {
+          "name": "List Movies (Faceted Filter)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/movies?genre=Sci-Fi&page=1&page_size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["movies"],
+              "query": [
+                { "key": "genre", "value": "Sci-Fi" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Trending Movies",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/movies/trending?limit=6", "host": ["{{baseUrl}}"], "path": ["movies", "trending"] }
+          }
+        },
+        {
+          "name": "Get Single Movie Details",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/movies/1", "host": ["{{baseUrl}}"], "path": ["movies", "1"] }
+          }
+        },
+        {
+          "name": "List Multiplex Theatres in City",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/theatres?city_id=1", "host": ["{{baseUrl}}"], "path": ["theatres"], "query": [{ "key": "city_id", "value": "1" }] }
+          }
+        },
+        {
+          "name": "List Scheduled Shows",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/shows?movie_id=1&city_id=1", "host": ["{{baseUrl}}"], "path": ["shows"], "query": [{ "key": "movie_id", "value": "1" }, { "key": "city_id", "value": "1" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Seat Locking & Concurrency",
+      "item": [
+        {
+          "name": "Get Auditorium Seat Map",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/shows/1/seats", "host": ["{{baseUrl}}"], "path": ["shows", "1", "seats"] }
+          }
+        },
+        {
+          "name": "Lock Seats (5-Min Atomic TTL Lock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"show_seat_ids\": [1, 2]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/seats/lock", "host": ["{{baseUrl}}"], "path": ["seats", "lock"] }
+          }
+        },
+        {
+          "name": "Unlock Seats Explicitly",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"show_seat_ids\": [1, 2]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/seats/unlock", "host": ["{{baseUrl}}"], "path": ["seats", "unlock"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Coupons & Bookings",
+      "item": [
+        {
+          "name": "Validate Discount Coupon",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME50\",\n  \"order_amount\": 600.0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/coupons/validate", "host": ["{{baseUrl}}"], "path": ["coupons", "validate"] }
+          }
+        },
+        {
+          "name": "Create Pending Reservation (Calculates Pricing)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('activeBookingId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"show_id\": 1,\n  \"seat_ids\": [1, 2],\n  \"coupon_code\": \"WELCOME50\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/bookings", "host": ["{{baseUrl}}"], "path": ["bookings"] }
+          }
+        },
+        {
+          "name": "Get Customer Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/bookings/me", "host": ["{{baseUrl}}"], "path": ["bookings", "me"] }
+          }
+        },
+        {
+          "name": "Get Single Booking Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/bookings/{{activeBookingId}}", "host": ["{{baseUrl}}"], "path": ["bookings", "{{activeBookingId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Payments & Tickets",
+      "item": [
+        {
+          "name": "Initiate Payment Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data.order_id) {",
+                  "    pm.collectionVariables.set('activeOrderId', jsonData.data.order_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking_id\": {{activeBookingId}},\n  \"provider\": \"DEMO_GATEWAY\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/payments/create", "host": ["{{baseUrl}}"], "path": ["payments", "create"] }
+          }
+        },
+        {
+          "name": "Simulate Payment Outcome (SUCCESS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"{{activeOrderId}}\",\n  \"outcome\": \"SUCCESS\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/payments/simulate-demo", "host": ["{{baseUrl}}"], "path": ["payments", "simulate-demo"] }
+          }
+        },
+        {
+          "name": "Get Confirmed Ticket & Base64 QR Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/bookings/{{activeBookingId}}/ticket", "host": ["{{baseUrl}}"], "path": ["bookings", "{{activeBookingId}}", "ticket"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Machine Learning Recommendations",
+      "item": [
+        {
+          "name": "Personalized Recommendations (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/recommendations/me?top_n=6", "host": ["{{baseUrl}}"], "path": ["recommendations", "me"] }
+          }
+        },
+        {
+          "name": "Global Catalog Recommendations",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/recommendations?top_n=6", "host": ["{{baseUrl}}"], "path": ["recommendations"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Admin Control & Analytics",
+      "item": [
+        {
+          "name": "Admin Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/analytics", "host": ["{{baseUrl}}"], "path": ["admin", "analytics"] }
+          }
+        },
+        {
+          "name": "Admin Audit All Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/bookings?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["admin", "bookings"] }
+          }
+        },
+        {
+          "name": "Admin List All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/users", "host": ["{{baseUrl}}"], "path": ["admin", "users"] }
+          }
+        }
+      ]
+    }
+  ]
+}
